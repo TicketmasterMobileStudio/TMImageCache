@@ -1,0 +1,6 @@
+framework module TMImageCache {
+  umbrella header "TMImageCache-umbrella.h"
+
+  export *
+  module * { export * }
+}

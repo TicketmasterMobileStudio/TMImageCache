@@ -1,0 +1,16 @@
+PODS:
+  - TMImageCache (0.1.0)
+
+DEPENDENCIES:
+  - TMImageCache (from `../`)
+
+EXTERNAL SOURCES:
+  TMImageCache:
+    :path: ../
+
+SPEC CHECKSUMS:
+  TMImageCache: 8a3b1f433b148dd51e9a23ec376c7f0b13282352
+
+PODFILE CHECKSUM: 2c375a567d18969339299925d8c34dc3e9f0ee30
+
+COCOAPODS: 1.1.1

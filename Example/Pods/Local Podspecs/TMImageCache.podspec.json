@@ -1,0 +1,22 @@
+{
+  "name": "TMImageCache",
+  "version": "0.1.0",
+  "summary": "A short description of TMImageCache.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/<GITHUB_USERNAME>/TMImageCache",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "Chris Stroud": "chris.stroud@ticketmaster.com"
+  },
+  "source": {
+    "git": "https://github.com/<GITHUB_USERNAME>/TMImageCache.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "8.0"
+  },
+  "source_files": "TMImageCache/Classes/**/*"
+}

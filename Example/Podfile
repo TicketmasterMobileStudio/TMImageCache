@@ -1,0 +1,8 @@
+use_frameworks!
+
+target 'TMImageCache_Example' do
+  pod 'TMImageCache', :path => '../'
+
+    
+  end
+end
