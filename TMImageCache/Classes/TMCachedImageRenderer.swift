@@ -4,7 +4,7 @@
 
 import UIKit
 
-public class TMCachedImageRenderer {
+open class TMCachedImageRenderer {
 
     fileprivate struct CachedFileDescriptor {
         let header: TMCachedImageHeader
@@ -18,10 +18,14 @@ public class TMCachedImageRenderer {
     fileprivate let queue: DispatchQueue
     fileprivate var fileDescriptorCache: [URL: CachedFileDescriptor] = [:]
 
-    public init(name: String, originalCache: TMImageCache) {
+    public init(name: String, originalCache: TMImageCache, purgeExisting shouldPurge: Bool = false) {
 
         guard let persistenceURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("TMVolatileImageCaches/\(originalCache.name)-\(name)", isDirectory: true) else {
             fatalError("Failed to construct persistence URL")
+        }
+
+        if shouldPurge {
+            try? FileManager.default.removeItem(at: persistenceURL)
         }
 
         try? FileManager.default.createDirectory(atPath: persistenceURL.path, withIntermediateDirectories: true, attributes: nil)
@@ -59,7 +63,7 @@ public class TMCachedImageRenderer {
         return nil
     }
 
-    public func render(image: UIImage, inContext context: CGContext, contextBounds bounds: CGRect) {
+    open func render(image: UIImage, inContext context: CGContext, contextBounds bounds: CGRect) {
         image.draw(in: bounds)
     }
 }
