@@ -5,13 +5,15 @@
 import Foundation
 import MobileCoreServices
 
-public final class TMImageCache {
-
+public final class TMImageCache<Key: Hashable> {
+    
     public let name: String
+    public let dataProvider: TMDataProvider<Key>
+    
     private lazy var queue: DispatchQueue = DispatchQueue(label: "\(type(of: self))-\(self.name)", qos: .background, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil)
     private let persistenceURL: URL
 
-    public init(name: String) {
+    public init(name: String, dataProvider: TMDataProvider<Key>) {
 
         guard let persistenceURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first?.appendingPathComponent("TMImageCaches/\(name)", isDirectory: true) else {
             fatalError("Failed to construct persistence URL")
@@ -21,9 +23,10 @@ public final class TMImageCache {
 
         self.persistenceURL = persistenceURL
         self.name = name
+        self.dataProvider = dataProvider
     }
 
-    public func setImage(atURL url: URL, forKey key: String) {
+    public func setImage(atURL url: URL, forKey key: Key) {
 
         if url.isFileURL == false {
             assertionFailure("URL must be a local file URL")
@@ -40,7 +43,7 @@ public final class TMImageCache {
         try? FileManager.default.copyItem(at: url, to: destinationURL)
     }
 
-    public func setImage(image: UIImage, forKey key: String, completion:@escaping ()->Void = {}) {
+    public func setImage(image: UIImage, forKey key: Key, completion:@escaping ()->Void = {}) {
 
         let url = self.urlForImage(withKey: key)
         self.queue.async {
@@ -54,15 +57,15 @@ public final class TMImageCache {
         }
     }
 
-    public func containsObject(forKey key: String) -> Bool {
+    public func containsObject(forKey key: Key) -> Bool {
         return FileManager.default.fileExists(atPath: self.urlForImage(withKey: key).path)
     }
     
-    internal func image(forKey key: String) -> UIImage? {
+    internal func image(forKey key: Key) -> UIImage? {
         return UIImage(contentsOfFile: self.urlForImage(withKey: key).path)
     }
 
-    private func urlForImage(withKey key: String) -> URL {
+    private func urlForImage(withKey key: Key) -> URL {
         return self.persistenceURL.appendingPathComponent("\(key)", isDirectory: false)
     }
 }

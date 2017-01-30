@@ -4,21 +4,22 @@
 
 import UIKit
 
-open class TMCachedImageRenderer {
+fileprivate struct CachedFileDescriptor {
+    let header: TMCachedImageHeader
+    let fileDescriptor: Int32
+    let mappedPointer: UnsafeMutableRawPointer
+}
 
-    fileprivate struct CachedFileDescriptor {
-        let header: TMCachedImageHeader
-        let fileDescriptor: Int32
-        let mappedPointer: UnsafeMutableRawPointer
-    }
+open class TMCachedImageRenderer<ImageKey: Hashable> {
+
 
     public final let name: String
-    public final let originalCache: TMImageCache
+    public final let originalCache: TMImageCache<ImageKey>
     public final let persistenceURL: URL
     fileprivate let queue: DispatchQueue
     fileprivate var fileDescriptorCache: [URL: CachedFileDescriptor] = [:]
 
-    public init(name: String, originalCache: TMImageCache, purgeExisting shouldPurge: Bool = false) {
+    public init(name: String, originalCache: TMImageCache<ImageKey>, purgeExisting shouldPurge: Bool = false) {
 
         guard let persistenceURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("TMVolatileImageCaches/\(originalCache.name)-\(name)", isDirectory: true) else {
             fatalError("Failed to construct persistence URL")
@@ -43,7 +44,7 @@ open class TMCachedImageRenderer {
         }
     }
 
-    public final func image(forKey key: String, targetSize size: CGSize, scale: CGFloat? = nil, completion: @escaping (_ key: String, _ image: UIImage?)->Void) -> UIImage? {
+    public final func image(forKey key: ImageKey, targetSize size: CGSize, scale: CGFloat? = nil, completion: @escaping (_ key: ImageKey, _ image: UIImage?)->Void) -> UIImage? {
 
         let scale = scale ?? UIScreen.main.scale
         if let basePointer = self.mappedPointer(forKey: key, targetSize: size, scale: scale) {
@@ -70,12 +71,12 @@ open class TMCachedImageRenderer {
 
 fileprivate extension TMCachedImageRenderer {
 
-    final func url(forImageWithKey key: String, targetSize size: CGSize, scale: CGFloat? = nil) -> URL {
+    final func url(forImageWithKey key: ImageKey, targetSize size: CGSize, scale: CGFloat? = nil) -> URL {
         let scale = scale ?? UIScreen.main.scale
         return self.persistenceURL.appendingPathComponent("\(key)_@\(scale)x_\(Int(size.width))_\(Int(size.height))", isDirectory: false)
     }
 
-    final func mappedPointer(forKey key: String, targetSize size: CGSize, scale: CGFloat? = nil) -> UnsafeMutableRawPointer? {
+    final func mappedPointer(forKey key: ImageKey, targetSize size: CGSize, scale: CGFloat? = nil) -> UnsafeMutableRawPointer? {
 
         let scale = scale ?? UIScreen.main.scale
         let url = self.url(forImageWithKey: key, targetSize: size, scale: scale)
@@ -111,7 +112,7 @@ fileprivate extension TMCachedImageRenderer {
         return bytes
     }
 
-    final func render(image: UIImage, forKey key: String, targetSize: CGSize, scale: CGFloat? = nil) -> UIImage? {
+    final func render(image: UIImage, forKey key: ImageKey, targetSize: CGSize, scale: CGFloat? = nil) -> UIImage? {
 
         let scale = scale ?? UIScreen.main.scale
         let url = self.url(forImageWithKey: key, targetSize: targetSize)
