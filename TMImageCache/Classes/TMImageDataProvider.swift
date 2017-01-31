@@ -12,27 +12,28 @@ import Foundation
 public protocol TMImageDataProvider {
     associatedtype Key
     
-    func image(for key: Key, completion: @escaping ImageRequestCompletion) -> Void
+    func image(for key: Key, completion: @escaping (ImageRequestResult) -> Void) -> CancellableImageRequest
 }
 
+public protocol CancellableImageRequest {
+    func cancel()
+}
 
 public enum ImageRequestResult {
     case success(UIImage)
     case failure(Error?)
 }
 
-public typealias ImageRequestCompletion = (ImageRequestResult) -> Void
-
 // type-erasure for TMImageDataProvider
-public class AnyImageDataProvider<Key>: TMImageDataProvider {
+class AnyImageDataProvider<Key>: TMImageDataProvider {
     
-    private let _imageForKey: (Key, @escaping ImageRequestCompletion) -> Void
+    private let _imageForKey: (Key, @escaping (ImageRequestResult) -> Void) -> Void
     
     init<DataProvider: TMImageDataProvider>(dataProvider: DataProvider) where DataProvider.Key == Key {
         _imageForKey = dataProvider.image(for:completion:)
     }
     
-    public func image(for key: Key, completion: @escaping ImageRequestCompletion) {
+    func image(for key: Key, completion: @escaping (ImageRequestResult) -> Void) {
         return _imageForKey(key, { result in
             completion(result)
         })
