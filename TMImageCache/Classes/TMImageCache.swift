@@ -8,12 +8,11 @@ import MobileCoreServices
 public final class TMImageCache<Key: Hashable> {
     
     public let name: String
-    public let dataProvider: TMDataProvider<Key>
     
     private lazy var queue: DispatchQueue = DispatchQueue(label: "\(type(of: self))-\(self.name)", qos: .background, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil)
     private let persistenceURL: URL
 
-    public init(name: String, dataProvider: TMDataProvider<Key>) {
+    public init(name: String) {
 
         guard let persistenceURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first?.appendingPathComponent("TMImageCaches/\(name)", isDirectory: true) else {
             fatalError("Failed to construct persistence URL")
@@ -23,7 +22,6 @@ public final class TMImageCache<Key: Hashable> {
 
         self.persistenceURL = persistenceURL
         self.name = name
-        self.dataProvider = dataProvider
     }
 
     public func setImage(atURL url: URL, forKey key: Key) {

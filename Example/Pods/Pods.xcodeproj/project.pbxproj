@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		13CB1F521E3FECC4008C002B /* TMDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CB1F501E3FE991008C002B /* TMDataProvider.swift */; };
+		13CB1F521E3FECC4008C002B /* TMImageDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CB1F501E3FE991008C002B /* TMImageDataProvider.swift */; };
+		13CB1F551E40DAE8008C002B /* TMImageDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CB1F531E40D77A008C002B /* TMImageDataSource.swift */; };
 		269DB2F36CCBED0D86647BFE39B78299 /* Pods-TMImageCache_Example-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = EDECD6912B695D38AF8D2D32781F5070 /* Pods-TMImageCache_Example-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		42A171B5E7B849459CC0D7A3755A290A /* Pods-TMImageCache_Example-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = 806D7CB1C9219AD37215B75E61FFE9E1 /* Pods-TMImageCache_Example-dummy.m */; };
 		6257A9F37093FE2B0A492FD05AB474B4 /* TMImageCache-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = AFB3E7D1E062B0A1C28A02836BCB04BE /* TMImageCache-dummy.m */; };
@@ -32,7 +33,8 @@
 
 /* Begin PBXFileReference section */
 		06C4A1F4DFC4DC160BD5DC7E17666545 /* TMImageCache.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = TMImageCache.xcconfig; sourceTree = "<group>"; };
-		13CB1F501E3FE991008C002B /* TMDataProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TMDataProvider.swift; sourceTree = "<group>"; };
+		13CB1F501E3FE991008C002B /* TMImageDataProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TMImageDataProvider.swift; sourceTree = "<group>"; };
+		13CB1F531E40D77A008C002B /* TMImageDataSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TMImageDataSource.swift; sourceTree = "<group>"; };
 		18417992091DAEFC99FD6AC4E9054943 /* Pods-TMImageCache_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-TMImageCache_Example.release.xcconfig"; sourceTree = "<group>"; };
 		26CC6BC8A3AC90095C1AF58409F22548 /* Pods-TMImageCache_Example-frameworks.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = "Pods-TMImageCache_Example-frameworks.sh"; sourceTree = "<group>"; };
 		3236B287164EE7E278E66822E1AB03B5 /* Pods_TMImageCache_Example.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TMImageCache_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -85,7 +87,8 @@
 				6B36C8521E26A96500587C2D /* TMCachedImageHeader.swift */,
 				6B36C84C1E269D9300587C2D /* TMCachedImageRenderer.swift */,
 				6B36C8551E26A9DA00587C2D /* UIImage+TMCachedImageExtensions.swift */,
-				13CB1F501E3FE991008C002B /* TMDataProvider.swift */,
+				13CB1F531E40D77A008C002B /* TMImageDataSource.swift */,
+				13CB1F501E3FE991008C002B /* TMImageDataProvider.swift */,
 			);
 			path = Classes;
 			sourceTree = "<group>";
@@ -290,11 +293,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				6B36C8511E269D9300587C2D /* TMImageCache.swift in Sources */,
-				13CB1F521E3FECC4008C002B /* TMDataProvider.swift in Sources */,
+				13CB1F521E3FECC4008C002B /* TMImageDataProvider.swift in Sources */,
 				6B36C8541E26A96500587C2D /* TMCachedImageHeader.swift in Sources */,
 				6B36C84F1E269D9300587C2D /* TMCachedImageRenderer.swift in Sources */,
 				6B36C8571E26A9DA00587C2D /* UIImage+TMCachedImageExtensions.swift in Sources */,
 				6257A9F37093FE2B0A492FD05AB474B4 /* TMImageCache-dummy.m in Sources */,
+				13CB1F551E40DAE8008C002B /* TMImageDataSource.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

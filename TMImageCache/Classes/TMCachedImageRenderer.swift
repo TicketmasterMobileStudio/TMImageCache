@@ -14,14 +14,14 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
 
 
     public final let name: String
-    public final let originalCache: TMImageCache<ImageKey>
+    public final let dataSource: TMImageDataSource<ImageKey>
     public final let persistenceURL: URL
     fileprivate let queue: DispatchQueue
     fileprivate var fileDescriptorCache: [URL: CachedFileDescriptor] = [:]
 
-    public init(name: String, originalCache: TMImageCache<ImageKey>, purgeExisting shouldPurge: Bool = false) {
+    public init(name: String, dataSource: TMImageDataSource<ImageKey>, purgeExisting shouldPurge: Bool = false) {
 
-        guard let persistenceURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("TMVolatileImageCaches/\(originalCache.name)-\(name)", isDirectory: true) else {
+        guard let persistenceURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("TMVolatileImageCaches/\(dataSource.cache.name)-\(name)", isDirectory: true) else {
             fatalError("Failed to construct persistence URL")
         }
 
@@ -33,7 +33,7 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
 
         self.name = name
         self.persistenceURL = persistenceURL
-        self.originalCache = originalCache
+        self.dataSource = dataSource
         self.queue = DispatchQueue(label: "\(type(of: self))-\(self.name)", qos: .background, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil)
     }
 
@@ -53,13 +53,15 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
             }
         }
         self.queue.async { [weak self] in
-            guard let original = self?.originalCache.image(forKey: key) else {
-                return
-            }
-            let result = self?.render(image: original, forKey: key, targetSize: size)
-            DispatchQueue.main.async {
-                completion(key, result)
-            }
+            self?.dataSource.image(for: key, completion: { (image: UIImage?) -> Void in
+                var result: UIImage? = nil
+                if let image = image {
+                    result = self?.render(image: image, forKey: key, targetSize: size)
+                }
+                DispatchQueue.main.async {
+                    completion(key, result)
+                }
+            })
         }
         return nil
     }
