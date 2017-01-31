@@ -8,15 +8,34 @@
 
 import Foundation
 
+
+public protocol TMImageDataProvider {
+    associatedtype Key
+    
+    func image(for key: Key, completion: @escaping ImageRequestCompletion) -> Void
+}
+
+
 public enum ImageRequestResult {
     case success(UIImage)
     case failure(Error?)
 }
 
-open class TMImageDataProvider<Key: Hashable> {
+public typealias ImageRequestCompletion = (ImageRequestResult) -> Void
+
+// type-erasure for TMImageDataProvider
+public class AnyImageDataProvider<Key>: TMImageDataProvider {
     
-    open func image(for key: Key, completion: (ImageRequestResult) -> Void) {
-        completion(.failure(nil))
+    private let _imageForKey: (Key, @escaping ImageRequestCompletion) -> Void
+    
+    init<DataProvider: TMImageDataProvider>(dataProvider: DataProvider) where DataProvider.Key == Key {
+        _imageForKey = dataProvider.image(for:completion:)
+    }
+    
+    public func image(for key: Key, completion: @escaping ImageRequestCompletion) {
+        return _imageForKey(key, { result in
+            completion(result)
+        })
     }
     
 }
