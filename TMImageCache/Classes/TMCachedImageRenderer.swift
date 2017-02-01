@@ -75,7 +75,7 @@ fileprivate extension TMCachedImageRenderer {
 
     final func url(forImageWithKey key: ImageKey, targetSize size: CGSize, scale: CGFloat? = nil) -> URL {
         let scale = scale ?? UIScreen.main.scale
-        return self.persistenceURL.appendingPathComponent("\(key)_@\(scale)x_\(Int(size.width))_\(Int(size.height))", isDirectory: false)
+        return self.persistenceURL.appendingPathComponent("\(key.hashValue)_@\(scale)x_\(Int(size.width))_\(Int(size.height))", isDirectory: false)
     }
 
     final func mappedPointer(forKey key: ImageKey, targetSize size: CGSize, scale: CGFloat? = nil) -> UnsafeMutableRawPointer? {
@@ -121,7 +121,9 @@ fileprivate extension TMCachedImageRenderer {
         let header = TMCachedImageHeader(targetSize: targetSize, scale: scale)
         let fileManager = FileManager.default
         if fileManager.fileExists(atPath: url.path) {
-            if let error = try? fileManager.removeItem(atPath: url.path) {
+            do {
+                try fileManager.removeItem(atPath: url.path)
+            } catch let error {
                 assertionFailure("Failed to remove existing file at path: \(url.path) error: \(error)")
                 return nil
             }
