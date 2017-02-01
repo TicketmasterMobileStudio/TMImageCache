@@ -5,10 +5,31 @@
 import UIKit
 import TMImageCache
 
+class SimpleDataProvider: TMImageDataProvider {
+    typealias Key = URL
+    
+    let urlSession = URLSession(configuration: .default)
+    
+    func image(for url: URL, completion: @escaping (ImageRequestResult) -> Void) -> CancellableImageRequest? {
+
+        if let image = UIImage(contentsOfFile: url.path) {
+            completion(.success(image))
+        } else {
+            completion(.failure(nil))
+        }
+        
+        return nil
+    }
+}
+
+extension URLSessionDataTask: CancellableImageRequest { }
+
 class CollectionViewController: UICollectionViewController {
 
-    let originalCache = TMImageCache(name: "DemoCache_Originals")
-    lazy var renderer: TMCachedImageRenderer = TMCachedImageRenderer(name: "DemoCache_Volatile", originalCache: self.originalCache)
+    let originalCache = TMImageCache<URL>(name: "DemoCache_Originals")
+    let dataProvider = SimpleDataProvider()
+    var dataSource: TMImageDataSource<URL>?
+    var renderer: TMCachedImageRenderer<URL>?
 
     var imageURLs: [URL] = [] {
         didSet {
@@ -19,9 +40,12 @@ class CollectionViewController: UICollectionViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        self.dataSource = TMImageDataSource(cache: originalCache, dataProvider: dataProvider)
+        self.renderer = TMCachedImageRenderer(name: "DemoCache_Volatile", dataSource: dataSource!)
+        
         self.imageURLs = Bundle.main.urls(forResourcesWithExtension: "jpg", subdirectory: nil) ?? []
         for url in self.imageURLs {
-            let key = "\(url.hashValue)"
+            let key = url
             if self.originalCache.containsObject(forKey: key) == false {
                 self.originalCache.setImage(atURL: url, forKey: key)
             }
@@ -48,10 +72,10 @@ class CollectionViewController: UICollectionViewController {
 
     override func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         if let cell = cell as? CustomCell {
-            let key = "\(imageURLs[indexPath.item].hashValue)"
+            let key = imageURLs[indexPath.item]
             cell.identifier = key
             cell.imageView.alpha = 1.0
-            cell.imageView.image = self.renderer.image(forKey: key, targetSize: cell.imageView.bounds.size, completion: { (key: String, image: UIImage?) in
+            cell.imageView.image = self.renderer?.image(forKey: key, targetSize: cell.imageView.bounds.size, completion: { (key: URL, image: UIImage?) in
                 guard cell.identifier == key else {
                     return
                 }
@@ -77,5 +101,5 @@ class CollectionViewController: UICollectionViewController {
 class CustomCell: UICollectionViewCell {
 
     @IBOutlet var imageView: UIImageView!
-    var identifier: String? = nil
+    var identifier: URL? = nil
 }
