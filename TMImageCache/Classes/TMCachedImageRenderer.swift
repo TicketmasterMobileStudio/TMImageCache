@@ -19,14 +19,10 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
     fileprivate let queue: DispatchQueue
     fileprivate var fileDescriptorCache: [URL: CachedFileDescriptor] = [:]
 
-    public init(name: String, dataSource: TMImageDataSource<ImageKey>, purgeExisting shouldPurge: Bool = false) {
+    public init(name: String, dataSource: TMImageDataSource<ImageKey>) {
 
         guard let persistenceURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("TMVolatileImageCaches/\(dataSource.cache.name)-\(name)", isDirectory: true) else {
             fatalError("Failed to construct persistence URL")
-        }
-
-        if shouldPurge {
-            try? FileManager.default.removeItem(at: persistenceURL)
         }
 
         try? FileManager.default.createDirectory(atPath: persistenceURL.path, withIntermediateDirectories: true, attributes: nil)
