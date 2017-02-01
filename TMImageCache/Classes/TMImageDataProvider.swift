@@ -27,13 +27,13 @@ public enum ImageRequestResult {
 // type-erasure for TMImageDataProvider
 class AnyImageDataProvider<Key>: TMImageDataProvider {
     
-    private let _imageForKey: (Key, @escaping (ImageRequestResult) -> Void) -> Void
+    private let _imageForKey: (Key, @escaping (ImageRequestResult) -> Void) -> CancellableImageRequest
     
     init<DataProvider: TMImageDataProvider>(dataProvider: DataProvider) where DataProvider.Key == Key {
         _imageForKey = dataProvider.image(for:completion:)
     }
     
-    func image(for key: Key, completion: @escaping (ImageRequestResult) -> Void) {
+    func image(for key: Key, completion: @escaping (ImageRequestResult) -> Void) -> CancellableImageRequest {
         return _imageForKey(key, { result in
             completion(result)
         })
