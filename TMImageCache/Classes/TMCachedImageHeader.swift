@@ -28,15 +28,19 @@ internal struct TMCachedImageHeader {
     let numberOfComponents: Int = 4
     let imageBytesLength: Int
     let totalBytesLength: Int
+    let isOpaque: Bool
 
     var bitmapInfo: CGBitmapInfo {
-        let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Host.rawValue)
+        let alphaInfo: CGImageAlphaInfo = self.isOpaque ? .noneSkipFirst : .premultipliedFirst
+        let info = CGBitmapInfo(rawValue: alphaInfo.rawValue | CGBitmapInfo.byteOrder32Host.rawValue)
         return info
     }
 
-    init(targetSize: CGSize, scale: CGFloat?=nil) {
+    init(targetSize: CGSize, scale: CGFloat?=nil, opaque: Bool = true) {
 
         let scale = scale ?? UIScreen.main.scale
+
+        self.isOpaque = opaque
 
         self.scale = scale
         self.size = targetSize

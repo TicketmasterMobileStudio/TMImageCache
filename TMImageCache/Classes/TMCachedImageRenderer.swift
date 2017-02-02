@@ -19,7 +19,9 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
     fileprivate let queue: DispatchQueue
     fileprivate var fileDescriptorCache: [URL: CachedFileDescriptor] = [:]
 
-    public init(name: String, dataSource: TMImageDataSource<ImageKey>) {
+    fileprivate let rendersOpaqueImages: Bool
+
+    public init(name: String, dataSource: TMImageDataSource<ImageKey>, rendersOpaqueImages: Bool = true) {
 
         guard let persistenceURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("TMVolatileImageCaches/\(dataSource.cache.name)-\(name)", isDirectory: true) else {
             fatalError("Failed to construct persistence URL")
@@ -27,6 +29,7 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
 
         try? FileManager.default.createDirectory(atPath: persistenceURL.path, withIntermediateDirectories: true, attributes: nil)
 
+        self.rendersOpaqueImages = rendersOpaqueImages
         self.name = name
         self.persistenceURL = persistenceURL
         self.dataSource = dataSource
@@ -99,7 +102,7 @@ fileprivate extension TMCachedImageRenderer {
             return nil
         }
 
-        let header = TMCachedImageHeader(targetSize: size, scale: scale)
+        let header = TMCachedImageHeader(targetSize: size, scale: scale, opaque: self.rendersOpaqueImages)
         guard let bytes = mmap(nil, header.totalBytesLength, PROT_READ, (MAP_FILE | MAP_SHARED), fileDescriptor, 0) else {
             close(fileDescriptor)
             assertionFailure("mmap failure")
@@ -114,7 +117,7 @@ fileprivate extension TMCachedImageRenderer {
 
         let scale = scale ?? UIScreen.main.scale
         let url = self.url(forImageWithKey: key, targetSize: targetSize)
-        let header = TMCachedImageHeader(targetSize: targetSize, scale: scale)
+        let header = TMCachedImageHeader(targetSize: targetSize, scale: scale, opaque: self.rendersOpaqueImages)
         let fileManager = FileManager.default
         if fileManager.fileExists(atPath: url.path) {
             do {
@@ -170,8 +173,12 @@ fileprivate extension TMCachedImageRenderer {
             context.scaleBy(x: header.scale, y: -header.scale)
             context.clip(to: imageRect)
             context.interpolationQuality = .high
-            context.setFillColor(UIColor.black.cgColor)
-            context.fill(imageRect)
+            context.clear(imageRect)
+
+            if self.rendersOpaqueImages {
+                context.setFillColor(UIColor.black.cgColor)
+                context.fill(imageRect)
+            }
 
             UIGraphicsPushContext(context)
             self.render(image: image, inContext: context, contextBounds: imageRect)
