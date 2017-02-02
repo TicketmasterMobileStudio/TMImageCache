@@ -65,3 +65,4 @@ fastlane/screenshots
 fastlane/test_output
 /.DS_Store
 /Example/Pods/Pods.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+/Example/.DS_Store
