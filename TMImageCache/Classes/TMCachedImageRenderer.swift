@@ -16,8 +16,8 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
     public final let name: String
     public final let dataSource: TMImageDataSource<ImageKey>
     public final let persistenceURL: URL
-    fileprivate let queue: DispatchQueue
     fileprivate var fileDescriptorCache: [URL: CachedFileDescriptor] = [:]
+    fileprivate var queuesByKey: [ImageKey: DispatchQueue] = [:]
 
     fileprivate let rendersOpaqueImages: Bool
 
@@ -33,7 +33,6 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
         self.name = name
         self.persistenceURL = persistenceURL
         self.dataSource = dataSource
-        self.queue = DispatchQueue(label: "\(type(of: self))-\(self.name)", qos: .background, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil)
     }
 
     deinit {
@@ -51,7 +50,11 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
                 return image
             }
         }
-        self.queue.async { [weak self] in
+
+        if self.queuesByKey[key] == nil {
+            self.queuesByKey[key] = DispatchQueue(label: "imageCachingQueue-\(key.hashValue)")
+        }
+        self.queuesByKey[key]?.async { [weak self] in
             self?.dataSource.image(for: key, completion: { (image: UIImage?) -> Void in
                 var result: UIImage? = nil
                 if let image = image {
@@ -62,6 +65,7 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
                 }
             })
         }
+
         return nil
     }
 
@@ -119,17 +123,29 @@ fileprivate extension TMCachedImageRenderer {
         let url = self.url(forImageWithKey: key, targetSize: targetSize)
         let header = TMCachedImageHeader(targetSize: targetSize, scale: scale, opaque: self.rendersOpaqueImages)
         let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: url.path) {
-            do {
-                try fileManager.removeItem(atPath: url.path)
-            } catch let error {
-                assertionFailure("Failed to remove existing file at path: \(url.path) error: \(error)")
-                return nil
-            }
-        }
+        let fileCoordinator = NSFileCoordinator()
 
-        guard fileManager.createFile(atPath: url.path, contents: nil, attributes: [URLResourceKey.isExcludedFromBackupKey.rawValue:true]) else {
-            assertionFailure("Failed to create new file \(url.path)")
+        var success: Bool = false
+        var errorPointer: NSErrorPointer = nil
+        fileCoordinator.coordinate(writingItemAt: url, options: .forReplacing, error: errorPointer) { (url) in
+            if fileManager.fileExists(atPath: url.path) {
+                do {
+                    try fileManager.removeItem(atPath: url.path)
+                } catch let error {
+                    assertionFailure("Failed to remove existing file at path: \(url.path) error: \(error)")
+                    return
+                }
+            }
+            guard fileManager.createFile(atPath: url.path, contents: nil, attributes: [URLResourceKey.isExcludedFromBackupKey.rawValue:true]) else {
+                assertionFailure("Failed to create new file \(url.path)")
+                return
+            }
+            success = true
+        }
+        guard success == true else {
+            if let error = errorPointer?.pointee {
+                assertionFailure("Couldn't coordinate writing item at url: \(url), error: \(error)")
+            }
             return nil
         }
 
@@ -190,7 +206,7 @@ fileprivate extension TMCachedImageRenderer {
             guard let basePointer = self.mappedPointer(forKey: key, targetSize: targetSize, scale: scale) else {
                 return nil
             }
-            
+
             return UIImage.fromMappedFile(pointer: basePointer)
         }
     }
