@@ -44,26 +44,41 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
 
     public final func image(forKey key: ImageKey, targetSize size: CGSize, scale: CGFloat? = nil, completion: @escaping (_ key: ImageKey, _ image: UIImage?)->Void) -> UIImage? {
 
-        let scale = scale ?? UIScreen.main.scale
-        if let basePointer = self.mappedPointer(forKey: key, targetSize: size, scale: scale) {
-            if let image = UIImage.fromMappedFile(pointer: basePointer) {
-                return image
-            }
-        }
+        // temp: synchronous path disabled
+        //        let scale = scale ?? UIScreen.main.scale
+        //        if let basePointer = self.mappedPointer(forKey: key, targetSize: size, scale: scale) {
+        //            if let image = UIImage.fromMappedFile(pointer: basePointer) {
+        //                return image
+        //            }
+        //        }
 
         if self.queuesByKey[key] == nil {
             self.queuesByKey[key] = DispatchQueue(label: "imageCachingQueue-\(key.hashValue)")
         }
-        self.queuesByKey[key]?.async { [weak self] in
-            self?.dataSource.image(for: key, completion: { (image: UIImage?) -> Void in
-                var result: UIImage? = nil
-                if let image = image {
-                    result = self?.render(image: image, forKey: key, targetSize: size)
-                }
+        self.queuesByKey[key]?.async {
+
+            let scale = scale ?? UIScreen.main.scale
+            if let basePointer = self.mappedPointer(forKey: key, targetSize: size, scale: scale),
+                let image = UIImage.fromMappedFile(pointer: basePointer){
                 DispatchQueue.main.async {
-                    completion(key, result)
+                    completion(key, image)
                 }
-            })
+            } else {
+                self.dataSource.image(for: key, completion: { (image: UIImage?) -> Void in
+                    var result: UIImage? = nil
+
+                    // temp until we figure out threading issues
+                    self.queuesByKey[key]?.async {
+                        if let image = image {
+                            result = self.render(image: image, forKey: key, targetSize: size)
+                        }
+                        DispatchQueue.main.async {
+                            completion(key, result)
+                        }
+                    }
+
+                })
+            }
         }
 
         return nil
@@ -89,31 +104,39 @@ fileprivate extension TMCachedImageRenderer {
             return cached.mappedPointer
         }
 
-        let fd = url.withUnsafeFileSystemRepresentation { (fsPath) -> Int32? in
+        let fileCoordinator = NSFileCoordinator()
 
-            guard let fsPath = fsPath else {
-                assertionFailure("Failed to obtain filesystem representation \(url.standardizedFileURL.path)")
-                return nil
+        var bytes: UnsafeMutableRawPointer? = nil
+        var errorPointer: NSErrorPointer = nil
+        fileCoordinator.coordinate(readingItemAt: url, options: [], error: errorPointer) { (url) in
+            let fd = url.withUnsafeFileSystemRepresentation { (fsPath) -> Int32? in
+
+                guard let fsPath = fsPath else {
+                    assertionFailure("Failed to obtain filesystem representation \(url.standardizedFileURL.path)")
+                    return nil
+                }
+                let fd = open(fsPath, O_RDONLY, 0666)
+                if fd == -1 {
+                    return nil
+                }
+                return fd
             }
-            let fd = open(fsPath, O_RDONLY, 0666)
-            if fd == -1 {
-                return nil
+
+            guard let fileDescriptor = fd else {
+                return
             }
-            return fd
+
+            let header = TMCachedImageHeader(targetSize: size, scale: scale, opaque: self.rendersOpaqueImages)
+            guard let theBytes = mmap(nil, header.totalBytesLength, PROT_READ, (MAP_FILE | MAP_SHARED), fileDescriptor, 0) else {
+                close(fileDescriptor)
+                assertionFailure("mmap failure")
+                return
+            }
+
+            self.fileDescriptorCache[url] = CachedFileDescriptor(header: header, fileDescriptor: fileDescriptor, mappedPointer: theBytes)
+            bytes = theBytes
         }
 
-        guard let fileDescriptor = fd else {
-            return nil
-        }
-
-        let header = TMCachedImageHeader(targetSize: size, scale: scale, opaque: self.rendersOpaqueImages)
-        guard let bytes = mmap(nil, header.totalBytesLength, PROT_READ, (MAP_FILE | MAP_SHARED), fileDescriptor, 0) else {
-            close(fileDescriptor)
-            assertionFailure("mmap failure")
-            return nil
-        }
-
-        self.fileDescriptorCache[url] = CachedFileDescriptor(header: header, fileDescriptor: fileDescriptor, mappedPointer: bytes)
         return bytes
     }
 
@@ -149,66 +172,82 @@ fileprivate extension TMCachedImageRenderer {
             return nil
         }
 
-        return url.withUnsafeFileSystemRepresentation { (filesystemRepresentation) -> UIImage? in
+        var imageToReturn: UIImage? = nil
+        var error: NSErrorPointer = nil
 
-            guard let filesystemRepresentation = filesystemRepresentation else {
-                assertionFailure("Failed to obtain filesystem representation \(url.standardizedFileURL.path)")
-                return nil
+        fileCoordinator.coordinate(writingItemAt: url, options: [], error: errorPointer) { (url) in
+            url.withUnsafeFileSystemRepresentation { (filesystemRepresentation) in
+                guard let filesystemRepresentation = filesystemRepresentation else {
+                    assertionFailure("Failed to obtain filesystem representation \(url.standardizedFileURL.path)")
+                    return
+                }
+                self.renderImageTo(filesystemRepresentation: filesystemRepresentation, header: header, image: image)
             }
-
-            let fileDescriptor = open(filesystemRepresentation, (O_RDWR | O_CREAT), 0666)
-            defer {
-                close(fileDescriptor)
-            }
-            guard truncate(filesystemRepresentation, off_t(header.totalBytesLength)) == 0 else {
-                perror("Failed to resize binary blob \(url.standardizedFileURL.path): ")
-                close(fileDescriptor)
-                return nil
-            }
-
-            guard let bytes = mmap(nil, header.totalBytesLength, PROT_WRITE | PROT_READ, MAP_FILE | MAP_SHARED, fileDescriptor, 0) else {
-                assertionFailure("mmap failure")
-                close(fileDescriptor)
-                return nil
-            }
-
-            let headerPointer = bytes.bindMemory(to: TMCachedImageHeader.self, capacity: 1)
-            headerPointer.pointee = header
-
-            let imagePointer = bytes.advanced(by: MemoryLayout<TMCachedImageHeader>.size)
-
-            let colorspace = CGColorSpaceCreateDeviceRGB()
-            guard let context = CGContext(data: imagePointer, width: Int(header.pixelSize.width), height: Int(header.pixelSize.height), bitsPerComponent: header.bitsPerComponent, bytesPerRow: header.bytesPerRow, space: colorspace, bitmapInfo: header.bitmapInfo.rawValue) else {
-                assertionFailure("Context creation failure")
-                close(fileDescriptor)
-                return nil
-            }
-
-            let imageRect = CGRect(x: 0.0, y: 0.0, width: header.size.width, height: header.size.height)
-            context.translateBy(x: 0.0, y: header.pixelSize.height)
-            context.scaleBy(x: header.scale, y: -header.scale)
-            context.clip(to: imageRect)
-            context.interpolationQuality = .high
-            context.clear(imageRect)
-
-            if self.rendersOpaqueImages {
-                context.setFillColor(UIColor.black.cgColor)
-                context.fill(imageRect)
-            }
-
-            UIGraphicsPushContext(context)
-            self.render(image: image, inContext: context, contextBounds: imageRect)
-            UIGraphicsPopContext()
-
-            msync(bytes, header.totalBytesLength, MS_SYNC)
-            munmap(bytes, header.totalBytesLength)
-
-            guard let basePointer = self.mappedPointer(forKey: key, targetSize: targetSize, scale: scale) else {
-                return nil
-            }
-
-            return UIImage.fromMappedFile(pointer: basePointer)
         }
+        if let error = errorPointer?.pointee {
+            print("Error rendering image into file: \(url), error: \(error)")
+        }
+
+        guard let basePointer = self.mappedPointer(forKey: key, targetSize: targetSize, scale: scale) else {
+            return nil
+        }
+
+        imageToReturn = UIImage.fromMappedFile(pointer: basePointer)
+
+        return imageToReturn
+    }
+
+    // todo: name this better
+    func renderImageTo(filesystemRepresentation: UnsafePointer<Int8>,
+                       header: TMCachedImageHeader,
+                       image: UIImage) {
+
+        let fileDescriptor = open(filesystemRepresentation, (O_RDWR | O_CREAT), 0666)
+        defer {
+            close(fileDescriptor)
+        }
+        guard truncate(filesystemRepresentation, off_t(header.totalBytesLength)) == 0 else {
+            perror("Failed to resize binary blob \(filesystemRepresentation): ")
+            close(fileDescriptor)
+            return
+        }
+
+        guard let bytes = mmap(nil, header.totalBytesLength, PROT_WRITE | PROT_READ, MAP_FILE | MAP_SHARED, fileDescriptor, 0) else {
+            assertionFailure("mmap failure")
+            close(fileDescriptor)
+            return
+        }
+
+        let headerPointer = bytes.bindMemory(to: TMCachedImageHeader.self, capacity: 1)
+        headerPointer.pointee = header
+
+        let imagePointer = bytes.advanced(by: MemoryLayout<TMCachedImageHeader>.size)
+
+        let colorspace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(data: imagePointer, width: Int(header.pixelSize.width), height: Int(header.pixelSize.height), bitsPerComponent: header.bitsPerComponent, bytesPerRow: header.bytesPerRow, space: colorspace, bitmapInfo: header.bitmapInfo.rawValue) else {
+            assertionFailure("Context creation failure")
+            close(fileDescriptor)
+            return
+        }
+
+        let imageRect = CGRect(x: 0.0, y: 0.0, width: header.size.width, height: header.size.height)
+        context.translateBy(x: 0.0, y: header.pixelSize.height)
+        context.scaleBy(x: header.scale, y: -header.scale)
+        context.clip(to: imageRect)
+        context.interpolationQuality = .high
+        context.clear(imageRect)
+
+        if self.rendersOpaqueImages {
+            context.setFillColor(UIColor.black.cgColor)
+            context.fill(imageRect)
+        }
+        
+        UIGraphicsPushContext(context)
+        self.render(image: image, inContext: context, contextBounds: imageRect)
+        UIGraphicsPopContext()
+        
+        msync(bytes, header.totalBytesLength, MS_SYNC)
+        munmap(bytes, header.totalBytesLength)
     }
 }
 
