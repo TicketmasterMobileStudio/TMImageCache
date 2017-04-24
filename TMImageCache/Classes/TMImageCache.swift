@@ -5,7 +5,7 @@
 import Foundation
 import MobileCoreServices
 
-public final class TMImageCache<Key: Hashable> {
+public final class TMImageCache<Key: TMImageKeyType> {
     
     public let name: String
     

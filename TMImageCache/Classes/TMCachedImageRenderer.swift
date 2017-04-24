@@ -10,7 +10,7 @@ fileprivate struct CachedFileDescriptor {
     let mappedPointer: UnsafeMutableRawPointer
 }
 
-open class TMCachedImageRenderer<ImageKey: Hashable> {
+open class TMCachedImageRenderer<ImageKey: TMImageKeyType> {
 
 
     public final let name: String
@@ -53,7 +53,7 @@ open class TMCachedImageRenderer<ImageKey: Hashable> {
         //        }
 
         if self.queuesByKey[key] == nil {
-            self.queuesByKey[key] = DispatchQueue(label: "imageCachingQueue-\(key.hashValue)")
+            self.queuesByKey[key] = DispatchQueue(label: "imageCachingQueue-\(key.hashedIdentifier)")
         }
         self.queuesByKey[key]?.async {
 
@@ -93,7 +93,7 @@ fileprivate extension TMCachedImageRenderer {
 
     final func url(forImageWithKey key: ImageKey, targetSize size: CGSize, scale: CGFloat? = nil) -> URL {
         let scale = scale ?? UIScreen.main.scale
-        return self.persistenceURL.appendingPathComponent("\(key.hashValue)_@\(scale)x_\(Int(size.width))_\(Int(size.height))", isDirectory: false)
+        return self.persistenceURL.appendingPathComponent("\(key.hashedIdentifier)_@\(scale)x_\(Int(size.width))_\(Int(size.height))", isDirectory: false)
     }
 
     final func mappedPointer(forKey key: ImageKey, targetSize size: CGSize, scale: CGFloat? = nil) -> UnsafeMutableRawPointer? {

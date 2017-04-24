@@ -24,6 +24,14 @@ class SimpleDataProvider: TMImageDataProvider {
 
 extension URLSessionDataTask: CancellableImageRequest { }
 
+extension URL: TMImageKeyType {
+
+    public var imageIdentifier: String {
+        return self.absoluteString
+    }
+
+}
+
 class CollectionViewController: UICollectionViewController {
 
     let originalCache = TMImageCache<URL>(name: "DemoCache_Originals")

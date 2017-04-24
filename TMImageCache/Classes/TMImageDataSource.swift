@@ -8,7 +8,7 @@
 
 import Foundation
 
-public class TMImageDataSource<Key: Hashable> {
+public class TMImageDataSource<Key: TMImageKeyType> {
     
     public let cache: TMImageCache<Key>
     

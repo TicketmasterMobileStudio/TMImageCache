@@ -1,22 +1,24 @@
 {
   "name": "TMImageCache",
-  "version": "0.1.0",
-  "summary": "A short description of TMImageCache.",
-  "description": "TODO: Add long description of the pod here.",
-  "homepage": "https://github.com/<GITHUB_USERNAME>/TMImageCache",
-  "license": {
-    "type": "MIT",
-    "file": "LICENSE"
-  },
+  "version": "0.1.1",
+  "summary": "Fast, efficient image caching",
+  "description": "Fast, efficient image caching",
+  "homepage": "https://github.com/TicketmasterMobileStudio/TMImageCache",
   "authors": {
     "Chris Stroud": "chris.stroud@ticketmaster.com"
   },
   "source": {
-    "git": "https://github.com/<GITHUB_USERNAME>/TMImageCache.git",
-    "tag": "0.1.0"
+    "git": "https://github.com/TicketmasterMobileStudio/TMImageCache.git",
+    "tag": "0.1.1"
   },
   "platforms": {
     "ios": "8.0"
   },
-  "source_files": "TMImageCache/Classes/**/*"
+  "source_files": "TMImageCache/Classes/**/*",
+  "frameworks": "UIKit",
+  "dependencies": {
+    "CryptoSwift": [
+      "~> 0.6"
+    ]
+  }
 }

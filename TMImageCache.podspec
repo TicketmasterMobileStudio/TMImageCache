@@ -14,4 +14,5 @@ Fast, efficient image caching
   s.ios.deployment_target = '8.0'
   s.source_files = 'TMImageCache/Classes/**/*'
   s.frameworks = 'UIKit'
+  s.dependency 'CryptoSwift', '~> 0.6'
 end
