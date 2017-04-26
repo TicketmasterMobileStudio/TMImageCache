@@ -3,6 +3,7 @@
 //
 
 import UIKit
+import AVFoundation
 
 fileprivate struct CachedFileDescriptor {
     let header: TMCachedImageHeader
@@ -85,7 +86,8 @@ open class TMCachedImageRenderer<ImageKey: TMImageKeyType> {
     }
 
     open func render(image: UIImage, inContext context: CGContext, contextBounds bounds: CGRect) {
-        image.draw(in: bounds)
+        let aspectRect = AVMakeRect(aspectRatio: image.size, insideRect: bounds)
+        image.draw(in: aspectRect)
     }
 }
 
